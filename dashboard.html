@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard | SafeSteps</title>
+  <link rel="stylesheet" href="css/design.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="container navbar">
+      <a class="logo" href="index.html">🛡️ SafeSteps</a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="reports.html">Report a Hazard</a></li>
+        <li><a href="track.html">Track Report</a></li>
+        <li><a href="dashboard.html">Dashboard</a></li>
+      </ul>
+      <a class="button small" href="reports.html">Make a Report</a>
+    </nav>
+  </header>
+
+  <main class="container page">
+    <p class="eyebrow">COMMUNITY OVERVIEW</p>
+    <h1>Community Dashboard</h1>
+    <p class="muted">A quick look at reported hazards and their progress.</p>
+
+    <div class="stats">
+      <article class="stat">
+        <p>Total reports</p>
+        <strong id="totalCount">...</strong>
+        <span>Reports received</span>
+      </article>
+      <article class="stat">
+        <p>Pending</p>
+        <strong id="pendingCount">...</strong>
+        <span>Awaiting review</span>
+      </article>
+      <article class="stat">
+        <p>In progress</p>
+        <strong id="progressCount">...</strong>
+        <span>Being addressed</span>
+      </article>
+      <article class="stat">
+        <p>Resolved</p>
+        <strong id="resolvedCount">...</strong>
+        <span>Issues addressed</span>
+      </article>
+    </div>
+
+    <section class="section">
+      <p class="eyebrow">RECENT ACTIVITY</p>
+      <h2>Recently reported hazards</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Report</th>
+              <th>Location</th>
+              <th>Date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="reportsTable">
+            <tr><td colspan="4">Loading live reports...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="hint">Live data from SafeSteps database. <a href="reports.html">Make a Report →</a></p>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer">
+      <strong>🛡️ SafeSteps</strong>
+      <span>Building safer communities, one report at a time.</span>
+      <span>© 2026 SafeSteps</span>
+    </div>
+  </footer>
+
+<script>
+async function loadDashboard() {
+  try {
+    const res = await fetch('get_reports.php');
+    const data = await res.json();
+    if (!data.success) throw new Error('Failed');
+    document.getElementById('totalCount').textContent = data.counts.total;
+    document.getElementById('pendingCount').textContent = data.counts.pending;
+    document.getElementById('progressCount').textContent = data.counts.progress;
+    document.getElementById('resolvedCount').textContent = data.counts.resolved;
+
+    const tbody = document.getElementById('reportsTable');
+    if (data.reports.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4">No reports yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.reports.map(r => {
+      const date = new Date(r.created_at).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'});
+      const cls = r.status.toLowerCase() === 'pending' ? 'pending' : r.status.toLowerCase().includes('progress') ? 'progress' : 'resolved';
+      return `<tr><td>${r.hazard_type} <br><small>${r.reference_number}</small></td><td>${r.location}</td><td>${date}</td><td><span class="status ${cls}">${r.status}</span></td></tr>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('reportsTable').innerHTML = '<tr><td colspan="4">Could not load reports. Is XAMPP running?</td></tr>';
+  }
+}
+loadDashboard();
+</script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Track a Report | SafeSteps</title>
+  <link rel="stylesheet" href="css/design.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="container navbar">
+      <a class="logo" href="index.html">🛡️ SafeSteps</a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="reports.html">Report a Hazard</a></li>
+        <li><a href="track.html">Track Report</a></li>
+        <li><a href="dashboard.html">Dashboard</a></li>
+      </ul>
+      <a class="button small" href="reports.html">Make a Report</a>
+    </nav>
+  </header>
+
+  <div class="container" style="max-width:600px; margin:30px auto; background:white; padding:25px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
+  <h2 style="text-align:center; color:#1a3a5f;">🔍 Track Your Report</h2>
+  <p style="text-align:center; color:#666;">Enter your reference number</p>
+
+  <input type="text" id="refInput" placeholder="e.g. SS-2026-001" style="width:100%; padding:12px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;">
+  <button type="button" onclick="trackReport()" style="width:100%; margin-top:12px; padding:12px; background:#1a3a5f; color:white; border:none; border-radius:8px; cursor:pointer;">Track Report</button>
+
+  <div id="result" class="result" style="margin-top:20px; padding:15px; border-radius:10px; background:#eef4ff; display:none;"></div>
+
+  <p style="margin-top:15px; font-size:13px; color:#666; text-align:center;">Try demo: <span onclick="tryDemo('SS-2026-001')" style="color:#1a3a5f; cursor:pointer; text-decoration:underline;">SS-2026-001</span> | <span onclick="tryDemo('SS-2026-002')" style="color:#1a3a5f; cursor:pointer; text-decoration:underline;">SS-2026-002</span> | <span onclick="tryDemo('SS-2026-003')" style="color:#1a3a5f; cursor:pointer; text-decoration:underline;">SS-2026-003</span></p>
+</div>
+
+<style>
+  .badge { display:inline-block; padding:5px 12px; border-radius:20px; color:white; font-size:13px; font-weight:bold; }
+  .Pending { background:#e67e22; }
+  .InProgress { background:#2980b9; }
+  .Resolved { background:#27ae60; }
+  .row { margin:8px 0; }
+  .label { font-weight:bold; }
+</style>
+
+  <main class="container page">
+    <p class="eyebrow">STAY INFORMED</p>
+    <h1>Track Your Report</h1>
+    <p class="muted">Enter the reference number you received after submitting a report.</p>
+
+    <section class="section">
+      <p class="eyebrow">UNDERSTANDING STATUSES</p>
+      <h2>What each status means</h2>
+      <div class="cards">
+        <article class="card">
+          <span class="status pending">Pending</span>
+          <h3>Received</h3>
+          <p>Your report is waiting to be reviewed.</p>
+        </article>
+        <article class="card">
+          <span class="status progress">In Progress</span>
+          <h3>Being addressed</h3>
+          <p>Action is being taken on the issue.</p>
+        </article>
+        <article class="card">
+          <span class="status resolved">Resolved</span>
+          <h3>Completed</h3>
+          <p>The reported hazard has been addressed.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer">
+      <strong>🛡️ SafeSteps</strong>
+      <span>Building safer communities, one report at a time.</span>
+      <span>© 2026 SafeSteps</span>
+    </div>
+  </footer>
+
+<script>
+function tryDemo(ref){
+  document.getElementById('refInput').value = ref;
+  trackReport();
+}
+
+function showResult(data){
+  const result = document.getElementById('result');
+  result.style.display = 'block';
+  const hazard = data.hazard_type || data.type || '';
+  const desc = data.description || '';
+  const reporter = data.reporter_name || '';
+  const created = data.created_at ? new Date(data.created_at).toLocaleDateString() : '';
+  const status = data.status || 'Pending';
+  const color = status === 'Resolved' ? '#27ae60' : status === 'In Progress' ? '#2980b9' : '#e67e22';
+  result.innerHTML = `
+    <div style="background:#e8f5e9;padding:20px;border-radius:12px;text-align:left">
+      <h3>✅ Report ${data.reference_number || data.id} Found!</h3>
+      <p><b>Hazard:</b> ${hazard}</p>
+      <p><b>Location:</b> ${data.location || ''}</p>
+      ${reporter ? `<p><b>Reporter:</b> ${reporter}</p>` : ''}
+      ${desc ? `<p><b>Description:</b> ${desc}</p>` : ''}
+      ${created ? `<p><b>Reported:</b> ${created}</p>` : ''}
+      <p><b>Status:</b> <span style="background:${color};color:white;padding:4px 10px;border-radius:20px;">${status}</span></p>
+    </div>`;
+}
+
+async function trackReport(){
+  const ref = document.getElementById('refInput').value.trim().toUpperCase();
+  const result = document.getElementById('result');
+  if(!ref){ alert('Please enter a reference number'); return; }
+  result.style.display = 'block';
+  result.innerHTML = `<p>Searching for ${ref}...</p>`;
+
+  // 1. Try REAL database first - this is the fix
+  try{
+    const res = await fetch('track.php?ref=' + encodeURIComponent(ref));
+    const data = await res.json();
+    if(data && data.reference_number){
+      showResult(data);
+      return;
+    }
+  }catch(e){ console.log('Server failed', e); }
+
+  // 2. Fallback: localStorage reports from reports.html
+  try{
+    const reports = JSON.parse(localStorage.getItem('safesteps_reports') || '[]');
+    const found = reports.find(r => (r.id || r.reference_number || '').toUpperCase() === ref);
+    if(found){
+      showResult({ reference_number: found.id || found.reference_number, hazard_type: found.type || found.hazard_type, location: found.location, description: found.description, status: found.status });
+      return;
+    }
+  }catch(e){}
+
+  result.innerHTML = `<p style="color:red">❌ Report ${ref} not found. Try SS-2026-001, SS-2026-002 or SS-2026-003</p>`;
+}
+</script>
+
+</body>
+</html>

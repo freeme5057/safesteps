@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Report a Hazard | SafeSteps</title>
+  <link rel="stylesheet" href="css/design.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="container navbar">
+      <a class="logo" href="index.html">🛡️ SafeSteps</a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="reports.html">Report a Hazard</a></li>
+        <li><a href="track.html">Track Report</a></li>
+        <li><a href="dashboard.html">Dashboard</a></li>
+      </ul>
+      <a class="button small" href="reports.html">Make a Report</a>
+    </nav>
+  </header>
+
+  <main class="container page">
+    <p class="eyebrow">HELP KEEP YOUR COMMUNITY SAFE</p>
+    <h1>Report a Hazard</h1>
+    <p class="muted">Give us the details of the safety issue you have noticed.</p>
+
+      <form class="form" id="reportForm">
+
+        <label>
+          Hazard type *
+         <select id="hazardType" name="hazard_type" required>
+            <option value="">Choose a hazard</option>
+            <option>Broken streetlight</option>
+            <option>Open drain</option>
+            <option>Damaged road</option>
+            <option>Overflowing refuse</option>
+            <option>Fallen electric pole</option>
+            <option>Flood-prone area</option>
+            <option>Other</option>
+          </select>
+        </label>
+
+        <label>
+          Location *
+          <input id="location" name="location" type="text" placeholder="Street, landmark, area" required>
+        </label>
+
+        <label class="wide">
+          Describe the hazard *
+          <textarea id="description" name="description" placeholder="What did you see?" required></textarea>
+        </label>
+
+        <div class="form-group">
+          <label>Voice Note (Optional) - Speak in English or Twi</label>
+          <select id="spokenLanguage" name="spoken_language">
+            <option value="English">English</option>
+            <option value="Twi">Twi</option>
+          </select>
+          <div style="margin-top:10px; display:flex; gap:10px; align-items:center;">
+            <button type="button" id="recordBtn" style="background:#e63946; color:white; border:none; padding:10px 15px; border-radius:8px; cursor:pointer;">🎤 Record</button>
+            <button type="button" id="stopBtn" disabled style="background:#333; color:white; border:none; padding:10px 15px; border-radius:8px; cursor:pointer;">⏹ Stop</button>
+            <span id="recordStatus">Not recording</span>
+          </div>
+          <audio id="audioPlayback" controls style="display:none; margin-top:10px; width:100%;"></audio>
+          <p id="voiceNoteInfo" style="font-size:13px; color:green;"></p>
+        </div>
+
+        <label>
+          Date noticed
+          <input id="dateNoticed" name="date" type="date">
+        </label>
+
+        <label>
+          Add a photo
+          <input name="photo" type="file" accept="image/*">
+        </label>
+
+        <label>
+          Your name (optional)
+          <input id="reporterName" name="reporter_name" type="text" placeholder="Enter your name">
+        </label>
+
+        <label>
+          Contact information (optional)
+          <input name="contact" type="text" placeholder="Phone number or email">
+        </label>
+
+      <p class="hint">Please do not put yourself in danger to take a photograph.</p>
+      <button id="submitBtn" type="submit">Submit Report</button>
+      <p class="hint">You are safe with safesteps.</p>
+      <div id="submitResult" style="margin-top:15px; display:none; padding:15px; border-radius:10px; background:#e8f5e9;"></div>
+    </form>
+  </main>
+
+  <footer>
+    <div class="container footer">
+      <strong>🛡️ SafeSteps</strong>
+      <span>Building safer communities, one report at a time.</span>
+      <span>© 2026 SafeSteps</span>
+    </div>
+  </footer>
+
+ <script>
+let mediaRecorder;
+let audioChunks = [];
+let audioBlob = null;
+const recordBtn = document.getElementById('recordBtn');
+const stopBtn = document.getElementById('stopBtn');
+const recordStatus = document.getElementById('recordStatus');
+const audioPlayback = document.getElementById('audioPlayback');
+const voiceNoteInfo = document.getElementById('voiceNoteInfo');
+recordBtn.onclick = async () => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+    mediaRecorder.onstop = () => {
+      audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+      audioPlayback.src = URL.createObjectURL(audioBlob);
+      audioPlayback.style.display = 'block';
+      voiceNoteInfo.textContent = "Voice note recorded in " + document.getElementById('spokenLanguage').value + " - ready to submit.";
+    };
+    mediaRecorder.start();
+    recordStatus.textContent = "🔴 Recording... Speak now in " + document.getElementById('spokenLanguage').value;
+    recordBtn.disabled = true;
+    stopBtn.disabled = false;
+  } catch (err) { alert("Please allow microphone access to record voice note."); }
+};
+stopBtn.onclick = () => {
+  mediaRecorder.stop();
+  recordStatus.textContent = "Recording stopped. Listen below.";
+  recordBtn.disabled = false;
+  stopBtn.disabled = true;
+};
+
+// REAL SUBMIT - to Postgres via submit.php, no more fake ST-xxxx
+document.getElementById('reportForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  const resultDiv = document.getElementById('submitResult');
+  btn.disabled = true; btn.textContent = 'Submitting...';
+  const formData = new FormData(e.target);
+  try {
+    const res = await fetch('submit.php', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (data.success) {
+      resultDiv.style.display = 'block';
+      resultDiv.innerHTML = `<h3>✅ Report Submitted!</h3><p>Your reference number is: <b style="font-size:18px;">${data.reference_number}</b></p><p>Save this number to track your report.</p><p><a href="track.html?ref=${data.reference_number}">Track it now →</a></p>`;
+      e.target.reset();
+    } else {
+      resultDiv.style.display = 'block';
+      resultDiv.style.background = '#fdecea';
+      resultDiv.innerHTML = `<p style="color:red;">❌ ${data.error || 'Failed to submit. Try again.'}</p>`;
+    }
+  } catch (err) {
+    resultDiv.style.display = 'block';
+    resultDiv.style.background = '#fdecea';
+    resultDiv.innerHTML = `<p style="color:red;">❌ Could not connect to server. Is XAMPP running?</p>`;
+  }
+  btn.disabled = false; btn.textContent = 'Submit Report';
+});
+</script>
+</body>
+</html>
