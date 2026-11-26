@@ -85,23 +85,20 @@ async function loadDashboard() {
     const res = await fetch('get_reports.php');
     const data = await res.json();
     if (!data.success) throw new Error('Failed');
-    document.getElementById('totalCount').textContent = data.counts.total;
-    document.getElementById('pendingCount').textContent = data.counts.pending;
-    document.getElementById('progressCount').textContent = data.counts.progress;
-    document.getElementById('resolvedCount').textContent = data.counts.resolved;
-
+    // ... your existing code to fill counts/table ...
+  } catch(e) {
+    // Fallback: use reports saved in browser
+    const reports = JSON.parse(localStorage.getItem('safesteps_reports') || '[]');
+    document.getElementById('totalCount').textContent = reports.length;
+    document.getElementById('pendingCount').textContent = reports.filter(r=>r.status==='Pending').length;
+    document.getElementById('progressCount').textContent = reports.filter(r=>r.status==='In Progress').length;
+    document.getElementById('resolvedCount').textContent = reports.filter(r=>r.status==='Resolved').length;
     const tbody = document.getElementById('reportsTable');
-    if (data.reports.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4">No reports yet.</td></tr>';
+    if (reports.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4">No reports yet. Make one first.</td></tr>';
       return;
     }
-    tbody.innerHTML = data.reports.map(r => {
-      const date = new Date(r.created_at).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'});
-      const cls = r.status.toLowerCase() === 'pending' ? 'pending' : r.status.toLowerCase().includes('progress') ? 'progress' : 'resolved';
-      return `<tr><td>${r.hazard_type} <br><small>${r.reference_number}</small></td><td>${r.location}</td><td>${date}</td><td><span class="status ${cls}">${r.status}</span></td></tr>`;
-    }).join('');
-  } catch(e) {
-    document.getElementById('reportsTable').innerHTML = '<tr><td colspan="4">Could not load reports. Is XAMPP running?</td></tr>';
+    tbody.innerHTML = reports.map(r => `<tr><td>${r.title}<br><small>${r.id}</small></td><td>-</td><td>${r.date}</td><td><span class="status">${r.status}</span></td></tr>`).join('');
   }
 }
 loadDashboard();
